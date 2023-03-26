@@ -27,10 +27,11 @@ module loadbalancer #(
 );
     /** Meta queue
         * Push a request into the queue on every posedge. (not considering the queue is full)
-        * Pull a request out of the queue for processing.
+        * Pull a request out of the queue if no data is recieved for processing
     */
-    reg meta_val_src;
-    reg meta_rdy_src;
+    logic meta_val_src;
+    logic meta_rdy_src;
+    logic meta_data_received;
     logic [HTTP_META_WIDTH-1:0] meta_data;
 
     queue_stream #(
@@ -49,11 +50,30 @@ module loadbalancer #(
         .data_src(meta_data)
     );
 
-    always_ff @( posedge aclk ) begin : manage_meta_queue
-        if (aresetn == 1'b0) begin
-            meta_rdy_src = 1'b0;
-        end
-    end
+    // TODO: LB may not be able to process data as fast as it receives.
+    assign meta_rdy_src = ~meta_queue.inst_fifo.is_empty;
+
+    // always_ff @( posedge aclk ) begin : manage_meta_queue
+        // if (aresetn == 1'b0) begin
+        //     meta_data_received <= 1'b0;
+        // end
+
+        // ? How can I read once and set 
+        // if (!meta_data_received) begin
+        //     meta_rdy_src <= 1'b1;
+        //     // if (meta_queue.val_src && !meta_queue.inst_fifo.is_empty) begin
+        //     //     meta_data_received <= 1'b1;
+        //     //     // meta_rdy_src <= 0'b0;
+        //     // end
+        // end 
+
+        // // * Handshake
+        // if (meta_rdy_src && meta_queue.val_src) begin
+        //     meta_data_received <= 1'b1;
+        // end else begin
+        //     meta_data_received <= 1'b0;
+        // end
+    // end
     
     // * Interface with the HTTP module 
     // * {meta_meta, method, hdr, bdy, oid}
@@ -84,16 +104,20 @@ module loadbalancer #(
         end
     end
 
-    // 
-    // * LB logic
-    //     
+    /** Load balancing logic. 
+    */     
+    logic [HTTP_META_WIDTH-1:0] meta_data_taken;
+    
     always_ff @( posedge aclk ) begin : load_balance
         if (aresetn == 1'b0) begin
             lb_ctrl <= 32'b0;
             pr_ctrl <= 32'b0;
         end
-        // TODO
+        
+        // TODO: Once reveived a meta (via handshake), send out control signals.
+        if (meta_rdy_src && meta_queue.val_src) begin
+            meta_data_taken <= meta_data;
+        end
     end
-
     
 endmodule : loadbalancer

@@ -2,7 +2,7 @@
 `include "../src/axis_intf.sv"
 `include "../src/queues/fifo.sv"
 
-module loadBalancer_tb ();
+module loadbalancer_tb ();
     reg clk;
     reg resetn;
 
@@ -10,19 +10,20 @@ module loadBalancer_tb ();
     localparam HTTP_META_WIDTH = 8;
     localparam N_REGIONS = 4;
     localparam QDEPTH = 4;
+    localparam PNTR_BITS = $clog2(QDEPTH);
 
     // * Instantiate interfaces.
     AXI4S #(.AXI4S_DATA_BITS(8)) meta_src(clk);
     AXI4S hdr_src(clk);
     AXI4S bdy_src(clk);
 
-    wire [2*OPERATOR_ID_WIDTH-1:0] lb_ctrl;
-    wire [2*OPERATOR_ID_WIDTH-1:0] pr_ctrl;
+    logic [2*OPERATOR_ID_WIDTH-1:0] lb_ctrl;
+    logic [2*OPERATOR_ID_WIDTH-1:0] pr_ctrl;
 
     logic [N_REGIONS*OPERATOR_ID_WIDTH-1:0] region_stats_out;
 
     loadbalancer #(
-        .HTTP_META_WIDTH(8),
+        .HTTP_META_WIDTH(HTTP_META_WIDTH),
         .QDEPTH(4)
     ) lb (
         .aclk(clk),
@@ -38,9 +39,12 @@ module loadBalancer_tb ();
     logic [N_REGIONS*OPERATOR_ID_WIDTH-1:0] region_stats_in;
     logic [QDEPTH-1:0][HTTP_META_WIDTH-1:0] meta_q_data;
     logic [HTTP_META_WIDTH-1:0] meta_q_in;
-    logic [$clog2(QDEPTH)-1:0] meta_q_n_entries;
+    logic [PNTR_BITS-1:0] meta_q_n_entries;
+    logic [PNTR_BITS-1:0] meta_q_wr_pntr;
+    logic [PNTR_BITS-1:0] meta_q_rd_pntr;
     logic meta_q_is_full;
     logic meta_q_is_empty;
+    logic [HTTP_META_WIDTH-1:0] meta_data_taken;
 
     assign region_stats_in = lb.region_stats_in;
     
@@ -53,7 +57,11 @@ module loadBalancer_tb ();
     assign meta_q_is_full = lb.meta_queue.inst_fifo.is_full;
     assign meta_q_is_empty = lb.meta_queue.inst_fifo.is_empty;
     assign meta_q_n_entries = lb.meta_queue.inst_fifo.n_entries;
+    assign meta_q_wr_pntr = lb.meta_queue.inst_fifo.wr_pntr;
+    assign meta_q_rd_pntr = lb.meta_queue.inst_fifo.rd_pntr;
 
+    assign meta_rdy_src = lb.meta_rdy_src;
+    assign meta_data_taken = lb.meta_data_taken;
 
     always @* begin
       // * To prevent racing, we should set delay first 
@@ -75,37 +83,48 @@ module loadBalancer_tb ();
         resetn <= 1'b1;
         meta_src.tvalid <= 1'b0;
         meta_src.tdata <= 8'hAA;
+        // lb.meta_rdy_src <= 1'b0;
+
+        #2
+        meta_src.tvalid <= 1'b1;
+        meta_src.tdata <= 8'hAA;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b0;
-        meta_src.tdata <= 8'hAA;
-
-        #2
+        meta_src.tdata <= 8'h99;
         region_stats_out <= 64'h0123_4567_89AB_CDEF;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hBB;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hCC;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b0;
         meta_src.tdata <= 8'hDD;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hEE;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hFF;
+        // lb.meta_rdy_src <= 1'b0;
 
         #2
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hAA;
+        // lb.meta_rdy_src <= 1'b0;
 
         #1
         meta_src.tvalid <= 1'b0;
