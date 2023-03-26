@@ -2,7 +2,7 @@
 
 `include "queues/queue_stream.sv"
 
-module loadBalancer #(
+module loadbalancer #(
     parameter HTTP_DATA_WIDTH = 512,
     parameter HTTP_META_WIDTH = 98, // 48 + 32 + 16
     parameter HTTP_META_META_WIDTH = 48,
@@ -34,7 +34,7 @@ module loadBalancer #(
     logic [HTTP_META_WIDTH-1:0] meta_data;
 
     queue_stream #(
-        .QTYPE(logic[HTTP_META_WIDTH:0]),
+        .QTYPE(logic[HTTP_META_WIDTH-1:0]),
         .QDEPTH(QDEPTH)
     ) meta_queue (
         .aclk(aclk),
@@ -48,6 +48,12 @@ module loadBalancer #(
         .rdy_src(meta_rdy_src),
         .data_src(meta_data)
     );
+
+    always_ff @( posedge aclk ) begin : manage_meta_queue
+        if (aresetn == 1'b0) begin
+            meta_rdy_src = 1'b0;
+        end
+    end
     
     // * Interface with the HTTP module 
     // * {meta_meta, method, hdr, bdy, oid}
@@ -64,7 +70,7 @@ module loadBalancer #(
     */    
     logic[N_REGIONS-1:0][OPERATOR_ID_WIDTH*2-1:0] region_stats;
 
-    always_ff @( posedge aclk ) begin : upateRegionStatus
+    always_ff @( posedge aclk ) begin : upate_region_status
         if (aresetn == 1'b01) begin
             int region;
             for (region = 0; region < N_REGIONS; region=region+1) begin
@@ -73,7 +79,7 @@ module loadBalancer #(
         end else begin
             int region;
             for (region = 0; region < N_REGIONS; region=region+1) begin
-                region_stats[region] <= region_stats_in[region*2 +: 1];
+                region_stats[region] <= region_stats_in[region*2 +: OPERATOR_ID_WIDTH];
             end
         end
     end
@@ -81,12 +87,13 @@ module loadBalancer #(
     // 
     // * LB logic
     //     
-    always_ff @( posedge aclk ) begin : loadBalancing
+    always_ff @( posedge aclk ) begin : load_balance
         if (aresetn == 1'b0) begin
-            meta_rdy_src <= 1'b0;
+            lb_ctrl <= 32'b0;
+            pr_ctrl <= 32'b0;
         end
         // TODO
     end
 
     
-endmodule
+endmodule : loadbalancer

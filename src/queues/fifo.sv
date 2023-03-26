@@ -38,17 +38,20 @@ genvar i;
 
 always_ff @(posedge aclk) begin
 	if(aresetn == 1'b0) begin
-		 n_entries <= 0;
-		 data <= 0;
+		n_entries <= 0;
+		data <= 0;
 	end else begin
-		 // Number of entries
-		 if (rd && !is_empty && (!wr || is_full))
-		 	n_entries <= n_entries - 1;
-		 else if (wr && !is_full && (!rd || is_empty))
-		 	n_entries <= n_entries + 1;
-		 // Data
-		 if(wr && !is_full)
-		 	data[wr_pntr] <= data_in;
+		// Number of entries
+		if (rd && !is_empty && (!wr || is_full))
+			n_entries <= n_entries - 1;
+		else if (wr && !is_full && (!rd || is_empty))
+			n_entries <= n_entries + 1;
+		// Data
+		if(wr && !is_full)
+			data[wr_pntr] <= data_in;
+		// * Handle `n_entries` under when `is_full`
+		// if(wr && is_full)
+			// n_entries <= FIFO_SIZE;
 	end
 end
 

@@ -6,17 +6,23 @@ module loadBalancer_tb ();
     reg clk;
     reg resetn;
 
-    AXI4S meta_src();
-    AXI4S hdr_src();
-    AXI4S bdy_src();
+    localparam OPERATOR_ID_WIDTH = 16;
+    localparam HTTP_META_WIDTH = 8;
+    localparam N_REGIONS = 4;
+    localparam QDEPTH = 4;
 
-    logic [4*16-1:0] region_stats_out;
+    // * Instantiate interfaces.
+    AXI4S #(.AXI4S_DATA_BITS(8)) meta_src(clk);
+    AXI4S hdr_src(clk);
+    AXI4S bdy_src(clk);
 
-    wire [32-1:0] lb_ctrl;
-    wire [32-1:0] pr_ctrl;
+    wire [2*OPERATOR_ID_WIDTH-1:0] lb_ctrl;
+    wire [2*OPERATOR_ID_WIDTH-1:0] pr_ctrl;
 
-    loadBalancer #(
-        .HTTP_DATA_WIDTH(8),
+    logic [N_REGIONS*OPERATOR_ID_WIDTH-1:0] region_stats_out;
+
+    loadbalancer #(
+        .HTTP_META_WIDTH(8),
         .QDEPTH(4)
     ) lb (
         .aclk(clk),
@@ -29,14 +35,25 @@ module loadBalancer_tb ();
         .pr_ctrl(pr_ctrl)
     );
 
-    logic [4-1:0][8-1:0] queue_data;
-    logic [8-1:0] queue_in;
-    logic q_is_full;
-    logic q_is_empty;
-    assign queue_data = lb.meta_queue.inst_fifo.data;
-    assign queue_in = lb.meta_queue.inst_fifo.data_in;
-    assign q_is_full = lb.meta_queue.inst_fifo.is_full;
-    assign q_is_empty = lb.meta_queue.inst_fifo.is_empty;
+    logic [N_REGIONS*OPERATOR_ID_WIDTH-1:0] region_stats_in;
+    logic [QDEPTH-1:0][HTTP_META_WIDTH-1:0] meta_q_data;
+    logic [HTTP_META_WIDTH-1:0] meta_q_in;
+    logic [$clog2(QDEPTH)-1:0] meta_q_n_entries;
+    logic meta_q_is_full;
+    logic meta_q_is_empty;
+
+    assign region_stats_in = lb.region_stats_in;
+    
+    assign meta_q_data = lb.meta_queue.inst_fifo.data;
+    assign meta_q_in = lb.meta_queue.inst_fifo.data_in;
+
+    assign meta_q_src_val = meta_src.tvalid;
+    assign meta_q_rdy_snk = lb.meta_queue.rdy_snk;
+    
+    assign meta_q_is_full = lb.meta_queue.inst_fifo.is_full;
+    assign meta_q_is_empty = lb.meta_queue.inst_fifo.is_empty;
+    assign meta_q_n_entries = lb.meta_queue.inst_fifo.n_entries;
+
 
     always @* begin
       // * To prevent racing, we should set delay first 
@@ -52,41 +69,48 @@ module loadBalancer_tb ();
         clk <= 1'b1;
         resetn <= 1'b0;
         region_stats_out <= 64'hFFFF_FFFF_FFFF_FFFF;
-        $display("Testbech::loadBalancer started");
+        $display("Testbech::loadbalancer started");
         
         #2
         resetn <= 1'b1;
         meta_src.tvalid <= 1'b0;
-        lb.meta_snk.tready <= 1'b0;
         meta_src.tdata <= 8'hAA;
 
         #2
         meta_src.tvalid <= 1'b0;
-        lb.meta_snk.tready <= 1'b1;
         meta_src.tdata <= 8'hAA;
 
         #2
-        // meta_src.tvalid <= 1'b1;
         region_stats_out <= 64'h0123_4567_89AB_CDEF;
 
         #2
         meta_src.tvalid <= 1'b1;
-        // ? Why controlling slave ready here doesn't work?
-        lb.meta_snk.tready <= 1'b0;
         meta_src.tdata <= 8'hBB;
 
         #2
-        meta_src.tvalid <= 1'b0;
-        // lb.meta_snk.tready <= 1'b1;
+        meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hCC;
 
         #2
-        // ? Why can't we push another request into the queue (depth=4)?
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hDD;
+
+        #2
         meta_src.tvalid <= 1'b1;
-        // lb.meta_snk.tready <= 1'b1;
-        meta_src.tdata <= 8'hCC;
+        meta_src.tdata <= 8'hEE;
+
+        #2
+        meta_src.tvalid <= 1'b1;
+        meta_src.tdata <= 8'hFF;
+
+        #2
+        meta_src.tvalid <= 1'b1;
+        meta_src.tdata <= 8'hAA;
+
+        #1
+        meta_src.tvalid <= 1'b0;
         
-        #10 $finish;
+        #3 $finish;
         $stop(0);
     end
 
