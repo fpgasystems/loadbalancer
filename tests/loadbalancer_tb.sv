@@ -17,8 +17,6 @@ module loadbalancer_tb ();
     AXI4S hdr_src(clk);
     AXI4S bdy_src(clk);
     
-    AXI4S #(.AXI4S_DATA_BITS(HTTP_META_WIDTH)) meta_snk(clk);
-
     logic  [$clog2(N_REGIONS)-1:0]lb_ctrl;
     // logic [2*OPERATOR_ID_WIDTH-1:0] pr_ctrl;
 
@@ -36,7 +34,6 @@ module loadbalancer_tb ();
         .hdr_in(hdr_src),
         .bdy_in(bdy_src),
         .region_stats_in(region_stats_out),
-        .meta_out(meta_snk),
         .lb_ctrl(lb_ctrl)
         // .pr_ctrl(pr_ctrl)
     );

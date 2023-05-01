@@ -28,7 +28,7 @@
 // ----------------------------------------------------------------------------
 // Generic interface
 // ----------------------------------------------------------------------------
-interface BusIntf #(
+interface HandshakeInf #(
 	parameter type STYPE = logic[63:0]
 ) (
 	input  logic aclk

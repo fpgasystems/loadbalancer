@@ -20,13 +20,12 @@ module loadbalancer #(
     AXI4S.s hdr_in,
     AXI4S.s bdy_in,
 
-    AXI4S.m meta_out,
-
+    // * Status collected from all region proxies.
     input logic [N_REGIONS*2*OPERATOR_ID_WIDTH-1:0] region_stats_in,
 
+    // * LB decision on to which region the incoming request shoule be forwarded.
     output logic [$clog2(N_REGIONS)-1:0] lb_ctrl
-    // output logic[($clog2(N_REGIONS)+OPERATOR_ID_WIDTH)-1:0] pr_ctrl
-    
+
 );
     /** Meta queue
         * Push a request into the queue on every posedge. (not considering the queue is full)
@@ -110,8 +109,6 @@ module loadbalancer #(
     
     genvar layer;
     genvar index;
-    // int n_comparisons;
-    // reg [N_LAYERS-1:0] min_load_vfid;
     generate
         for (layer = 0; layer < N_LAYERS; layer++) begin
             // ? How can I make the following layers sequential?            
@@ -119,28 +116,55 @@ module loadbalancer #(
                 // * Blocks on the same layer can be parallel.
                 always_comb begin : tree_comparison_layer
                     if (layer == 0) begin
-                    //     if ((region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS]) 
-                    //         || ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS]
-                    //             && region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid)
-                    //             )
-                    //         ) begin
-                    //         load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
-                    //         min_load_vfids[layer][index/2] = region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH];
+                        if ((region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])) begin
 
-                    //     end else if ((region_stats[index][0 +: LOAD_BITS] > region_stats[index+1][0 +: LOAD_BITS]) 
-                    //         || ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS]
-                    //             && region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid)
-                    //             )
-                    //         ) begin
-                    //         load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
-                    //         min_load_vfids[layer][index/2] = region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH];
-                        load_comparison_results[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? region_stats[index][0 +: LOAD_BITS] : region_stats[index+1][0 +: LOAD_BITS];
-                        min_load_vfids[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? index : index+1;
+                            load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
+                            min_load_vfids[layer][index/2] = index;
+
+                        end else if ((region_stats[index][0 +: LOAD_BITS] > region_stats[index+1][0 +: LOAD_BITS])) begin
+
+                            load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
+                            min_load_vfids[layer][index/2] = index + 1;
+                            
+                        end else if ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS]
+                                && region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid)) begin
+
+                            load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
+                            min_load_vfids[layer][index/2] = index;
+
+                        end else begin
+                            // * Fall back to the second region (index+1).
+                            load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
+                            min_load_vfids[layer][index/2] = index + 1;
+                        end
+                        // load_comparison_results[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? region_stats[index][0 +: LOAD_BITS] : region_stats[index+1][0 +: LOAD_BITS];
+                        // min_load_vfids[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? index : index+1;
                         // * TODO: Take into account cold starts.
                         // load_comparison_results[index/2][LOAD_BITS +: OPERATOR_ID_WIDTH] = (region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] < region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH])? region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] : region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH];
                     end else begin
-                        load_comparison_results[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? load_comparison_results[layer-1][index] : load_comparison_results[layer-1][index+1];
-                        min_load_vfids[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? min_load_vfids[layer-1][index] : min_load_vfids[layer-1][index+1];
+                        if (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1]) begin
+
+                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index];
+                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index];
+
+                        end else if (load_comparison_results[layer-1][index] > load_comparison_results[layer-1][index+1]) begin
+
+                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
+                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
+                            
+                        end else if ((load_comparison_results[layer-1][index] == load_comparison_results[layer-1][index+1])
+                                && min_load_vfids[layer-1][index] == requested_oid) begin
+
+                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index];
+                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index];
+
+                        end else begin
+                            // * Fall back to the second region (index+1).
+                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
+                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
+                        end
+                        // load_comparison_results[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? load_comparison_results[layer-1][index] : load_comparison_results[layer-1][index+1];
+                        // min_load_vfids[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? min_load_vfids[layer-1][index] : min_load_vfids[layer-1][index+1];
                         // load_comparison_results[index/2][LOAD_BITS +: OPERATOR_ID_WIDTH] = (load_comparison_results[index][LOAD_BITS +: OPERATOR_ID_WIDTH] < load_comparison_results[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH])? load_comparison_results[index][LOAD_BITS +: OPERATOR_ID_WIDTH] : load_comparison_results[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH];
                     end
                 end
@@ -150,45 +174,8 @@ module loadbalancer #(
         end
     endgenerate
 
+    // * Set the output lb_ctrl to be the first entry in the last row of the comparison results.
     assign lb_ctrl = min_load_vfids[N_LAYERS-1][0];
     assign meta_rdy_src = ~meta_queue.inst_fifo.is_empty;
-
-
-    // reg [OPERATOR_ID_WIDTH-1:0] last_oid_in_q;
-    // // ? Why assigning a parameter doesn't work?
-    // reg [LOAD_BITS-1:0] min_load; // = QDEPTH;
-    // reg [LOAD_BITS-1:0] cur_load;
-    // // ? Why doesn't the waveform show the intended behavior of the flag?
-    // reg lb_flag;
-
-    // integer vfid;
-    // always_comb begin : find_min_load
-    //     min_load = '1;
-    //     lb_flag = 1'b0;
-    //     for (vfid = 0; vfid < N_REGIONS; vfid=vfid+1) begin
-    //         // * [ [(region1): oid, load], [(region2): oid, load] ]
-    //         cur_load = region_stats[vfid][0 +: LOAD_BITS];
-    //         last_oid_in_q = region_stats[vfid][LOAD_BITS +: OPERATOR_ID_WIDTH];
-
-    //         if (cur_load < min_load) begin
-    //             min_load = cur_load;
-    //             min_load_vfid = vfid;
-    //         end else if (cur_load == min_load && last_oid_in_q == requested_oid) begin
-    //             // * To break ties, prefer a region with requested oid for mitigating cold start
-    //             min_load_vfid = vfid;
-    //         end
-    //     end
-    //     lb_flag = 1'b1;
-    // end
-
-    // always_ff @( posedge aclk, meta_received ) begin
-    // always_ff @( posedge aclk ) begin
-    //     // if (lb_flag) begin
-    //         lb_ctrl <= min_load_vfids[0];
-    //         // * TODO: The LB may not always ready whenever the queue has data.
-    //         // * Also, it seems that this signal has a one-cycle delay.
-    //         meta_rdy_src <= ~meta_queue.inst_fifo.is_empty;
-    //     // end
-    // end
     
 endmodule : loadbalancer
