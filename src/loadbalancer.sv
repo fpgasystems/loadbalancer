@@ -101,8 +101,6 @@ module loadbalancer #(
     // ! Assume #regions is a power of two number. 
     localparam int N_LAYERS = $clog2(N_REGIONS);
     // * Sum of an arithmetic progression + 1.
-    // localparam int N_SLOTS = (((N_REGIONS/2) * N_LAYERS) / 2 + 1) * LOAD_BITS;
-    // logic [N_LAYERS:0][(OPERATOR_ID_WIDTH+LOAD_BITS)-1:0] load_comparison_results;
     reg [N_LAYERS-1:0][N_LAYERS-1:0][(LOAD_BITS)-1:0] load_comparison_results;
     reg [N_LAYERS-1:0][N_LAYERS-1:0][N_LAYERS-1:0] min_load_vfids;
 
@@ -110,11 +108,12 @@ module loadbalancer #(
     genvar layer;
     genvar index;
     generate
-        for (layer = 0; layer < N_LAYERS; layer++) begin
+        for (layer = 0; layer < N_LAYERS; layer++) begin : tree_comparator_layers
             // ? How can I make the following layers sequential?            
-            for (index = 0; index < 2**(N_LAYERS-layer); index+=2) begin
+            for (index = 0; index < 2**(N_LAYERS-layer); index+=2) begin : comparator_single_layer
                 // * Blocks on the same layer can be parallel.
-                always_comb begin : tree_comparison_layer
+                always_comb begin : load_comparator
+                    // * The first layer makes decisions based on the region status (`region_stats`).
                     if (layer == 0) begin
                         if ((region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])) begin
 
@@ -126,21 +125,20 @@ module loadbalancer #(
                             load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
                             min_load_vfids[layer][index/2] = index + 1;
                             
-                        end else if ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS]
-                                && region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid)) begin
+                        end else if ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS])) begin
 
-                            load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
-                            min_load_vfids[layer][index/2] = index;
+                            if (region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid) begin
+                                load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
+                                min_load_vfids[layer][index/2] = index; 
+                            end else begin
+                                // * Fall back to the second region (index+1).
+                                load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
+                                min_load_vfids[layer][index/2] = index + 1;
+                            end
 
-                        end else begin
-                            // * Fall back to the second region (index+1).
-                            load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
-                            min_load_vfids[layer][index/2] = index + 1;
-                        end
-                        // load_comparison_results[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? region_stats[index][0 +: LOAD_BITS] : region_stats[index+1][0 +: LOAD_BITS];
-                        // min_load_vfids[layer][index/2] = (region_stats[index][0 +: LOAD_BITS] < region_stats[index+1][0 +: LOAD_BITS])? index : index+1;
-                        // * TODO: Take into account cold starts.
-                        // load_comparison_results[index/2][LOAD_BITS +: OPERATOR_ID_WIDTH] = (region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] < region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH])? region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] : region_stats[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH];
+                        end 
+
+                    // * The following layers make decisions based on results from previous layers (`load_comparison_results`).
                     end else begin
                         if (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1]) begin
 
@@ -152,25 +150,23 @@ module loadbalancer #(
                             load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
                             min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
                             
-                        end else if ((load_comparison_results[layer-1][index] == load_comparison_results[layer-1][index+1])
-                                && min_load_vfids[layer-1][index] == requested_oid) begin
+                        end else if ((load_comparison_results[layer-1][index] == load_comparison_results[layer-1][index+1])) begin
 
-                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index];
-                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index];
+                            if (min_load_vfids[layer-1][index] == requested_oid) begin
+                                load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index];
+                                min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index];
+                            end else begin
+                                // * Fall back to the second region (index+1).
+                                load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
+                                min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
+                            end
 
-                        end else begin
-                            // * Fall back to the second region (index+1).
-                            load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
-                            min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
-                        end
-                        // load_comparison_results[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? load_comparison_results[layer-1][index] : load_comparison_results[layer-1][index+1];
-                        // min_load_vfids[layer][index/2] = (load_comparison_results[layer-1][index] < load_comparison_results[layer-1][index+1])? min_load_vfids[layer-1][index] : min_load_vfids[layer-1][index+1];
-                        // load_comparison_results[index/2][LOAD_BITS +: OPERATOR_ID_WIDTH] = (load_comparison_results[index][LOAD_BITS +: OPERATOR_ID_WIDTH] < load_comparison_results[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH])? load_comparison_results[index][LOAD_BITS +: OPERATOR_ID_WIDTH] : load_comparison_results[index+1][LOAD_BITS +: OPERATOR_ID_WIDTH];
+                        end 
+                        
                     end
                 end
             end
-            // ? If I were to use a longer array to store concurrent results, then the indexing needs to know how many results have been produced.
-            // assign n_comparisons = 2**(N_LAYERS-layer-1);
+            
         end
     endgenerate
 
