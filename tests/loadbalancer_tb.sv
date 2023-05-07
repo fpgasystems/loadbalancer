@@ -6,21 +6,22 @@ module loadbalancer_tb ();
     reg clk;
     reg resetn;
 
-    localparam OPERATOR_ID_WIDTH = 2;
+    localparam OPERATOR_ID_WIDTH = 4;
     localparam HTTP_META_WIDTH = 8;
     localparam N_REGIONS = 4;
-    localparam QDEPTH = 4;
+    localparam QDEPTH = 16;
     localparam PNTR_BITS = $clog2(QDEPTH);
 
     // * Instantiate interfaces.
     AXI4S #(.AXI4S_DATA_BITS(HTTP_META_WIDTH)) meta_src(clk);
     AXI4S #(.AXI4S_DATA_BITS(HTTP_META_WIDTH)) meta_snk(clk);
-    // * Unused.
+    // ! Unused.
     AXI4S hdr_src(clk);
     AXI4S bdy_src(clk);
     
     logic  [$clog2(N_REGIONS)-1:0]lb_ctrl;
 
+    // *  4 x (OID: 4bits + load: 4 bits) = 32.
     logic [N_REGIONS*(OPERATOR_ID_WIDTH+PNTR_BITS)-1:0] region_stats_src;
 
     loadbalancer #(
@@ -40,7 +41,7 @@ module loadbalancer_tb ();
         // .pr_ctrl(pr_ctrl)
     );
 
-    // [ [region1: oid, load], [region2: oid, load] ] -> 4 * (2+2) = 16
+    // [ [region1: oid, load], [region2: oid, load] ] -> 4 x (4+4) = 32
     logic [N_REGIONS-1:0][(OPERATOR_ID_WIDTH+PNTR_BITS)-1:0] region_stats;
     logic [QDEPTH-1:0][HTTP_META_WIDTH-1:0] meta_q_data;
     logic [HTTP_META_WIDTH-1:0] meta_q_in;
@@ -49,7 +50,7 @@ module loadbalancer_tb ();
     logic [PNTR_BITS-1:0] meta_q_rd_pntr;
     logic meta_q_is_full;
     logic meta_q_is_empty;
-    logic [HTTP_META_WIDTH-1:0] meta_lb_data_taken;
+    logic [HTTP_META_WIDTH-1:0] meta_data_taken;
 
     assign region_stats = lb.region_stats;
     
@@ -64,16 +65,16 @@ module loadbalancer_tb ();
     assign meta_q_wr_pntr = lb.meta_queue.inst_fifo.wr_pntr;
     assign meta_q_rd_pntr = lb.meta_queue.inst_fifo.rd_pntr;
 
-    assign meta_tb_src_val = meta_src.tvalid;
-    assign meta_lb_snk_rdy = meta_snk.tready;
-    assign meta_lb_data_taken = lb.meta_data_taken;
+    assign meta_src_val = meta_src.tvalid;
+    assign meta_snk_rdy = meta_snk.tready;
+    assign meta_data_taken = lb.meta_data_taken;
 
     always @* begin
       // * To prevent racing, we should set delay first 
       // * s.t. the clock can be initialized to a known value 
       // * (by the below initial block) before flipping.
       #1
-     clk <= ~clk;
+      clk <= ~clk;
     end
 
     initial begin
@@ -81,60 +82,81 @@ module loadbalancer_tb ();
         $display("Testbech::loadbalancer started");
         $dumpfile("lb_tb.vcd");
         $dumpvars(1);
+
         clk <= 1'b1;
         resetn <= 1'b0;
         region_stats_src <= '0;
         
-        #2
-        resetn <= 1'b1;
-                
-        meta_src.tvalid <= 1'b0;
-        meta_src.tdata <= 8'hAA;
+        #2 /** 1st request. */
+        resetn <= 1'b1;    
+        meta_src.tvalid <= 1'b1; // * Valid input meta.
+        meta_src.tdata <= 8'hF9;
 
-        #2
-        region_stats_src <= 16'bXX00_1101_1010_0111;
+        // meta_snk.tready <= 1'b0; // * Force LB to be NOT ready.
+        region_stats_src <= 32'hX0_35_61_74; // * Update region status.
 
+        #2 
+        meta_src.tvalid <= 1'b0; // * Stop pushing (duplicated) meta data to the queue.
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+        meta_snk.tready <= 1'b1; // * Allow LB to accept meta data.
+
+        #2 /** 2nd request. */
         meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hAA;
+        meta_src.tdata <= 8'hF5;
 
-        #2
-        meta_src.tvalid <= 1'b0;
-        meta_src.tdata <= 8'h99;
-        // region_stats_src <= 64'h0123_4567_89AB_CDEF;
+        region_stats_src <= 32'h91_34_60_73;
 
-        #2
-        region_stats_src <= 16'b0010_1100_1011_0110;
+        #2 /** 3rd request. */
         meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hBB;
+        meta_src.tdata <= 8'hF5;
 
-        #2
-        region_stats_src <= 16'b0011_1111_1001_0110;
+        meta_snk.tready <= 1'b0; // * Force LB to be NOT ready.
 
+        #2 /** 4th request (should be queued behind request3). */
         meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hCC;
-
-        #2
-        meta_src.tvalid <= 1'b0;
-        meta_src.tdata <= 8'hDD;
-
-        #2
-        region_stats_src <= 16'b0011_1110_1011_0110;
-
-        meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hEE;
-
-        #2
-        meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hFF;
-
-        #2
-        meta_src.tvalid <= 1'b1;
-        meta_src.tdata <= 8'hAA;
-
-        #1
-        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hF9;
         
-        #3 $finish;
+        meta_snk.tready <= 1'b1; // * Let LB be ready.
+        region_stats_src <= 32'h91_13_51_72;
+
+        #2 /** LB decision should've be made at this point. */
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+        meta_snk.tready <= 1'b0; // * Force LB to be NOT ready.
+
+        #2 
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+        meta_snk.tready <= 1'b1; // * Let LB be ready.
+        // meta_snk.tready <= 1'b0; // * Force LB to be NOT ready.
+
+        #2 /** Handling 4th request. */
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+        // meta_snk.tready <= 1'b1; // * Let LB be ready.
+        
+        region_stats_src <= 32'h90_13_52_71;
+
+        #2 
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+        #2 
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+
+
+        #2 /** 5th request. */
+        meta_src.tvalid <= 1'b1;
+        meta_src.tdata <= 8'hF9;
+
+        region_stats_src <= 32'h91_12_52_70;
+
+        #2 /** LB decision should've be made at this point. */
+        meta_src.tvalid <= 1'b0;
+        meta_src.tdata <= 8'hXX; // * No requests coming in.
+
+        
+        #2 $finish;
         $stop(0);
     end
 

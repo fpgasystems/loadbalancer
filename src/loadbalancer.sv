@@ -70,7 +70,6 @@ module loadbalancer #(
 
     /** Load balancing logic. 
     */  
-
     logic [HTTP_META_WIDTH-1:0] meta_data_taken;
     logic meta_received;
 
@@ -85,21 +84,30 @@ module loadbalancer #(
     assign has_hdr = meta_data_taken[OPERATOR_ID_WIDTH+1];
     assign http_method = meta_data_taken[(HTTP_META_WIDTH-1) -: HTTP_META_META_WIDTH];
     
-    always_ff @( posedge aclk ) begin : load_balance
-        if (aresetn == 1'b0) begin
-            lb_ctrl <= 'X;
-            meta_received <= 1'b0;
-        end
-        
+
+    always_comb begin : pull_meta_data
         if (meta_out.tready && meta_queue.val_src) begin
-            meta_data_taken <= meta_out.tdata;
-            meta_received <= 1'b1;
-        end else begin
-            // * Assign values in all branches to prevent meta stability issues.
-            meta_received <= 1'b0;
-            meta_data_taken <= 'X;
-        end
+            meta_received = 1'b1;
+            meta_data_taken = meta_out.tdata;
+        end 
     end
+
+    // always_ff @( posedge aclk ) begin : load_balance
+    //     if (aresetn == 1'b0) begin
+    //         lb_ctrl <= 'X;
+    //         meta_received <= 1'b0;
+    //     end
+        
+    //     if (meta_out.tready && meta_queue.val_src) begin
+    //         meta_received <= 1'b1;
+    //         meta_data_taken <= meta_out.tdata;
+    //     end 
+    //     else begin
+    //         // * Assign values in all branches to prevent meta stability issues.
+    //         meta_received <= 1'b0;
+    //         // meta_data_taken <= 'X;
+    //     end
+    // end
 
     // ! Assume #regions is a power of two number. 
     localparam int N_LAYERS = $clog2(N_REGIONS);
@@ -128,7 +136,7 @@ module loadbalancer #(
                             load_comparison_results[layer][index/2] = region_stats[index+1][0 +: LOAD_BITS];
                             min_load_vfids[layer][index/2] = index + 1;
                             
-                        end else if ((region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS])) begin
+                        end else if (region_stats[index][0 +: LOAD_BITS] == region_stats[index+1][0 +: LOAD_BITS]) begin
 
                             if (region_stats[index][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid) begin
                                 load_comparison_results[layer][index/2] = region_stats[index][0 +: LOAD_BITS];
@@ -153,9 +161,10 @@ module loadbalancer #(
                             load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index+1];
                             min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index+1];
                             
-                        end else if ((load_comparison_results[layer-1][index] == load_comparison_results[layer-1][index+1])) begin
-
-                            if (min_load_vfids[layer-1][index] == requested_oid) begin
+                        end else if (load_comparison_results[layer-1][index] == load_comparison_results[layer-1][index+1]) begin
+                            
+                            // ! Check region status with `vfid=min_load_vfids[layer-1][index]`.
+                            if (region_stats[ min_load_vfids[layer-1][index] ][LOAD_BITS +: OPERATOR_ID_WIDTH] == requested_oid) begin
                                 load_comparison_results[layer][index/2] = load_comparison_results[layer-1][index];
                                 min_load_vfids[layer][index/2] = min_load_vfids[layer-1][index];
                             end else begin
@@ -175,6 +184,8 @@ module loadbalancer #(
 
     // * Set the output lb_ctrl to be the first entry in the last row of the comparison results.
     assign lb_ctrl = (meta_received)? min_load_vfids[N_LAYERS-1][0] : 'X;
+    // assign lb_ctrl = min_load_vfids[N_LAYERS-1][0];
+
     // * Let LB be ready whenever there's valid
     assign meta_out.tready = ~meta_queue.inst_fifo.is_empty;
     
