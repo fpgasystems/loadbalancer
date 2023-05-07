@@ -14,13 +14,14 @@ module loadbalancer_tb ();
 
     // * Instantiate interfaces.
     AXI4S #(.AXI4S_DATA_BITS(HTTP_META_WIDTH)) meta_src(clk);
+    AXI4S #(.AXI4S_DATA_BITS(HTTP_META_WIDTH)) meta_snk(clk);
+    // * Unused.
     AXI4S hdr_src(clk);
     AXI4S bdy_src(clk);
     
     logic  [$clog2(N_REGIONS)-1:0]lb_ctrl;
-    // logic [2*OPERATOR_ID_WIDTH-1:0] pr_ctrl;
 
-    logic [N_REGIONS*(OPERATOR_ID_WIDTH+PNTR_BITS)-1:0] region_stats_out;
+    logic [N_REGIONS*(OPERATOR_ID_WIDTH+PNTR_BITS)-1:0] region_stats_src;
 
     loadbalancer #(
         .HTTP_META_WIDTH(HTTP_META_WIDTH),
@@ -33,7 +34,8 @@ module loadbalancer_tb ();
         .meta_in(meta_src),
         .hdr_in(hdr_src),
         .bdy_in(bdy_src),
-        .region_stats_in(region_stats_out),
+        .region_stats_in(region_stats_src),
+        .meta_out(meta_snk),
         .lb_ctrl(lb_ctrl)
         // .pr_ctrl(pr_ctrl)
     );
@@ -47,7 +49,7 @@ module loadbalancer_tb ();
     logic [PNTR_BITS-1:0] meta_q_rd_pntr;
     logic meta_q_is_full;
     logic meta_q_is_empty;
-    logic [HTTP_META_WIDTH-1:0] meta_data_taken;
+    logic [HTTP_META_WIDTH-1:0] meta_lb_data_taken;
 
     assign region_stats = lb.region_stats;
     
@@ -62,16 +64,16 @@ module loadbalancer_tb ();
     assign meta_q_wr_pntr = lb.meta_queue.inst_fifo.wr_pntr;
     assign meta_q_rd_pntr = lb.meta_queue.inst_fifo.rd_pntr;
 
-    assign meta_out_val = meta_src.tvalid;
-    assign meta_rdy_src = lb.meta_rdy_src;
-    assign meta_data_taken = lb.meta_data_taken;
+    assign meta_tb_src_val = meta_src.tvalid;
+    assign meta_lb_snk_rdy = meta_snk.tready;
+    assign meta_lb_data_taken = lb.meta_data_taken;
 
     always @* begin
       // * To prevent racing, we should set delay first 
       // * s.t. the clock can be initialized to a known value 
       // * (by the below initial block) before flipping.
       #1
-      clk <= ~clk;
+     clk <= ~clk;
     end
 
     initial begin
@@ -81,7 +83,7 @@ module loadbalancer_tb ();
         $dumpvars(1);
         clk <= 1'b1;
         resetn <= 1'b0;
-        region_stats_out <= 16'h0000;
+        region_stats_src <= '0;
         
         #2
         resetn <= 1'b1;
@@ -90,7 +92,7 @@ module loadbalancer_tb ();
         meta_src.tdata <= 8'hAA;
 
         #2
-        region_stats_out <= 16'bXX00_1101_1010_0111;
+        region_stats_src <= 16'bXX00_1101_1010_0111;
 
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hAA;
@@ -98,15 +100,15 @@ module loadbalancer_tb ();
         #2
         meta_src.tvalid <= 1'b0;
         meta_src.tdata <= 8'h99;
-        // region_stats_out <= 64'h0123_4567_89AB_CDEF;
+        // region_stats_src <= 64'h0123_4567_89AB_CDEF;
 
         #2
-        region_stats_out <= 16'b0010_1100_1011_0110;
+        region_stats_src <= 16'b0010_1100_1011_0110;
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hBB;
 
         #2
-        region_stats_out <= 16'b0011_1111_1001_0110;
+        region_stats_src <= 16'b0011_1111_1001_0110;
 
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hCC;
@@ -116,7 +118,7 @@ module loadbalancer_tb ();
         meta_src.tdata <= 8'hDD;
 
         #2
-        region_stats_out <= 16'b0011_1110_1011_0110;
+        region_stats_src <= 16'b0011_1110_1011_0110;
 
         meta_src.tvalid <= 1'b1;
         meta_src.tdata <= 8'hEE;

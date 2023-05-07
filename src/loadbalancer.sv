@@ -20,6 +20,9 @@ module loadbalancer #(
     AXI4S.s hdr_in,
     AXI4S.s bdy_in,
 
+    AXI4S.m meta_out,
+
+
     // * Status collected from all region proxies.
     input logic [N_REGIONS*2*OPERATOR_ID_WIDTH-1:0] region_stats_in,
 
@@ -28,12 +31,12 @@ module loadbalancer #(
 
 );
     /** Meta queue
-        * Push a request into the queue on every posedge. (not considering the queue is full)
-        * Pull a request out of the queue if no data is recieved for processing
+        * Push a received request into the queue on every posedge (done by `stream_queue`).
+        * Pull a queued request out and store it in `meta_out.tdata`.
     */
-    logic meta_val_src;
-    logic meta_rdy_src;
-    logic [HTTP_META_WIDTH-1:0] meta_data;
+    // logic meta_val_snk;
+    // logic meta_rdy_snk;
+    // logic [HTTP_META_WIDTH-1:0] meta_out.tdata;
 
     queue_stream #(
         .QTYPE(logic[HTTP_META_WIDTH-1:0]),
@@ -46,9 +49,9 @@ module loadbalancer #(
         .val_snk(meta_in.tvalid),
         .data_snk(meta_in.tdata),
         // * Dequeue
-        .val_src(meta_val_src),
-        .rdy_src(meta_rdy_src),
-        .data_src(meta_data)
+        .val_src(meta_out.tvalid),
+        .rdy_src(meta_out.tready),
+        .data_src(meta_out.tdata)
     );
 
 
@@ -88,8 +91,8 @@ module loadbalancer #(
             meta_received <= 1'b0;
         end
         
-        if (meta_rdy_src && meta_queue.val_src) begin
-            meta_data_taken <= meta_data;
+        if (meta_out.tready && meta_queue.val_src) begin
+            meta_data_taken <= meta_out.tdata;
             meta_received <= 1'b1;
         end else begin
             // * Assign values in all branches to prevent meta stability issues.
@@ -171,7 +174,8 @@ module loadbalancer #(
     endgenerate
 
     // * Set the output lb_ctrl to be the first entry in the last row of the comparison results.
-    assign lb_ctrl = min_load_vfids[N_LAYERS-1][0];
-    assign meta_rdy_src = ~meta_queue.inst_fifo.is_empty;
+    assign lb_ctrl = (meta_received)? min_load_vfids[N_LAYERS-1][0] : 'X;
+    // * Let LB be ready whenever there's valid
+    assign meta_out.tready = ~meta_queue.inst_fifo.is_empty;
     
 endmodule : loadbalancer
