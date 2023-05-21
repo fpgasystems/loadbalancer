@@ -6,12 +6,14 @@ module upcounter_tb ();
     logic resetn;
     logic enable;
 
-    localparam COUNT_BITS = 2;
+    localparam COUNT_BITS = 3;
+    localparam MAX = 5;
     logic [COUNT_BITS-1:0] count_out;
     logic max_tick_out;
 
     upcounter #(
-        .COUNT_BITS(COUNT_BITS)
+        .COUNT_BITS(COUNT_BITS),
+        .MAX(MAX)
     ) counter (
         .clk(clk),
         .resetn(resetn),
@@ -40,7 +42,7 @@ module upcounter_tb ();
         #2 
         enable <= 1'b1;
 
-        #6
+        #10
         enable <= 0'b0;
 
         #4

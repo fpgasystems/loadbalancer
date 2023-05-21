@@ -41,14 +41,15 @@ module loadbalancer #(
         * A valid LB decision is available once `max_tick` is reached. 
     */
     localparam int N_LAYERS = $clog2(N_REGIONS);
-    localparam int COUNT_BITS = N_LAYERS - 1;
-    logic [COUNT_BITS-1:0] count;
+    // localparam int COUNT_BITS = N_LAYERS - 1;
+    logic [N_LAYERS-1:0] count;
     logic enable_counter;
     logic max_tick;
 
     upcounter #(
-        // * E.g., 8 regions -> 3-layer tree -> 2-bit counter: 0,1,2,3
-        .COUNT_BITS(COUNT_BITS)
+        // * E.g., 4 regions -> 2-layer tree -> 2-bit counter: 0,1,2,3(max)
+        .COUNT_BITS(N_LAYERS),
+        .MAX(N_LAYERS+1)
     ) counter (
         .clk(aclk),
         .resetn(aresetn),
@@ -161,7 +162,7 @@ module loadbalancer #(
     assign has_hdr = meta_data_taken[OPERATOR_ID_WIDTH+1];
     assign http_method = meta_data_taken[(HTTP_META_WIDTH-1) -: HTTP_META_META_WIDTH];
     
-    logic [COUNT_BITS-1:0] layer;
+    logic [N_LAYERS-1:0] layer;
     // * Stores the least loads of the previous layers.
     // * The 1st layer of comparison needs log(#regions) of slots.
     // * The following layers use logarithmically less slots -> overwrite the buffer.

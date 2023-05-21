@@ -1,6 +1,7 @@
 
 module upcounter #(
-    parameter COUNT_BITS = 3
+    parameter COUNT_BITS = 3,
+    parameter MAX = 2**COUNT_BITS - 1
 ) (
     input   clk,
     input   resetn,
@@ -10,7 +11,7 @@ module upcounter #(
     output  logic max_tick
 );
     logic [COUNT_BITS-1:0] next_count;
-    localparam int MAX = 2**COUNT_BITS - 1;
+    // localparam int MAX = 2**COUNT_BITS - 1;
 
     always_ff @( posedge clk ) begin : update_state
         if (resetn == 1'b0 || enable == 1'b0) begin
