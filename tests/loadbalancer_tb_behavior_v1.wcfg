@@ -12,8 +12,8 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0.000 ns"></ZoomStartTime>
-      <ZoomEndTime time="26.001 ns"></ZoomEndTime>
-      <Cursor1Time time="26.000 ns"></Cursor1Time>
+      <ZoomEndTime time="11.534 ns"></ZoomEndTime>
+      <Cursor1Time time="4.447 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="254"></NameColumnWidth>
@@ -90,6 +90,8 @@
    <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_is_full">
       <obj_property name="ElementShortName">meta_q_is_full</obj_property>
       <obj_property name="ObjectShortName">meta_q_is_full</obj_property>
+      <obj_property name="CustomSignalColor">#E0FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
    <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_rdy_snk">
       <obj_property name="ElementShortName">meta_q_rdy_snk</obj_property>
