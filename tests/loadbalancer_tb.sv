@@ -96,12 +96,29 @@ module loadbalancer_tb ();
         meta_q_src.tdata <= 8'hF9;
         region_stats_src <= 32'hX0_35_61_74; // * Update region status.
 
-        #4
+        #2
         meta_q_src.tvalid <= 1'b0; // * No more input meta.
         meta_q_src.tdata <= 'X;
 
-        #12
-        // * Pull up the proxy ready to make LB idle.
+        #2
+        // * Pull up the proxy ready for a handshake with LB.
+        proxy_meta_snk.tready <= 1'b1;
+
+        #14 /** 2nd request. */
+        meta_q_src.tvalid <= 1'b1;
+        meta_q_src.tdata <= 8'hF5;
+        region_stats_src <= 32'h71_51_13_91;
+        // region_stats_src <= 32'h91_13_51_72;
+
+        // * Proxy is somehow not ready anymore.
+        proxy_meta_snk.tready <= 1'b0;
+
+        #2
+        meta_q_src.tvalid <= 1'b0; // * No more input meta.
+        meta_q_src.tdata <= 'X;
+
+        #14
+        // * Pull up the proxy ready for a handshake with LB.
         proxy_meta_snk.tready <= 1'b1;
         
         // #2 /** 1st request. */
@@ -173,7 +190,7 @@ module loadbalancer_tb ();
         // meta_q_src.tdata <= 8'hXX; // * No requests coming in.
 
         
-        #2 $finish;
+        #4 $finish;
         $stop(0);
     end
 

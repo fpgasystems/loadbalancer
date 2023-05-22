@@ -49,7 +49,7 @@ module loadbalancer #(
     upcounter #(
         // * E.g., 4 regions -> 2-layer tree -> 2-bit counter: 0,1,2,3(max)
         .COUNT_BITS(N_LAYERS),
-        .MAX(N_LAYERS+1)
+        .MAX(N_LAYERS)
     ) counter (
         .clk(aclk),
         .resetn(aresetn),
@@ -105,6 +105,8 @@ module loadbalancer #(
     end
 
     reg enable_counter;
+    // ? Why can we assign a register value to wire?
+    // ? Why is `counter.enable` a wire?
     assign counter.enable = enable_counter;
     
     always_comb begin : NextState
@@ -113,8 +115,6 @@ module loadbalancer #(
                 // * If there's valid data in queue AND counter hasn't started.
                 if (meta_queue.val_src == 1'b1 && enable_counter == 1'b0) begin
                     next_state = ACPT;
-                    // * Ready to pull out a piece of new meta data from `meta_qeueu`.
-                    meta_q_out.tready = 1'b1;
                 end else begin
                     next_state = IDLE;
                 end
@@ -123,12 +123,16 @@ module loadbalancer #(
                 // * If clock has started.
                 if (enable_counter == 1'b1) begin
                     next_state = SCHD;
+                    // * Stop pulling new meta while scheduling the current one.
+                    meta_q_out.tready = 1'b0;
+                    
                     // * Start counter.
                     // counter.enable = 1'b1;
-                    // * Do not pull another piece of meta while scheduling the current one.
-                    meta_q_out.tready = 1'b0;
                 end else begin
                     next_state = ACPT;
+                    // * Ready to pull out a piece of new meta data from `meta_qeueu`.
+                    meta_q_out.tready = 1'b1;
+
                     // counter.enable = 1'b0;
                 end
             end
@@ -136,7 +140,7 @@ module loadbalancer #(
                 // * Detected a valid handshake between LB and the destined proxy.
                 // ! Error: 'lb_ctrl' is not a constant
                 // if (counter.max_tick == 1'b1 && meta_pxy_outs[lb_ctrl].tready == 1'b1) begin
-                if (counter.max_tick == 1'b1 && proxy_meta_out.tready == 1'b1) begin
+                if (layer == N_LAYERS && proxy_meta_out.tready == 1'b1) begin
                     next_state = IDLE;
                     // counter.enable = 1'b0;
                 end else begin
@@ -170,27 +174,36 @@ module loadbalancer #(
     // * Stores the vFIDs of least-loaded regions of the previous layers.
     logic [N_LAYERS-1:0][N_LAYERS-1:0] min_load_vfids;
 
-    always_ff @(posedge aclk) begin: LoadBalancing
+    always_ff @(posedge aclk) begin: LoadBalancingOutput
         if (aresetn == 1'b0) begin
             enable_counter <= 1'b0;
+            meta_data_taken <= 'X;
             lb_ctrl <= 'X;
             layer <= '0;
+            load_comparison_results <= 'X;
+            min_load_vfids <= 'X;
         end else begin
             case (current_state)
                 IDLE: begin
+                    // * Disable counter when idling.
                     enable_counter <= 1'b0;
+
+                    meta_data_taken <= 'X;
                     lb_ctrl <= 'X;
                     layer <= '0;
+                    load_comparison_results <= 'X;
+                    min_load_vfids <= 'X;
                 end
                     
                 ACPT: begin
-                    // * Start counter;
+                    // * Start counter once accepting a request from the queue.
+                    // * We don't start the counter at SCHD since it has 1 cycle delay.
                     enable_counter <= 1'b1;
-                    // * Both `meta_queue.val_src` and `meta_q_out.tready` should be high now (a handshake).
-                    MetaQueueHandShake: assert (meta_queue.val_src == 1'b1 && meta_q_out.tready == 1'b1)
-                        else $error("Assertion MetaQueueHandShake failed!");
-                    // * Accept a piece of meta from the queue.
-                    meta_data_taken <= meta_q_out.tdata;
+                    // * Only pull the data upon a valid handshake. Otherwise the data could be invalid.
+                    if (meta_queue.val_src == 1'b1 && meta_q_out.tready == 1'b1) begin
+                        // * Accept a piece of meta from the queue.
+                        meta_data_taken <= meta_q_out.tdata;
+                    end
                 end
 
                 SCHD: begin
@@ -252,18 +265,23 @@ module loadbalancer #(
                         end
                     end
                     else begin
-                        MaxTick: assert (counter.max_tick == 1'b1)
-                            else $error("Assertion MaxTick failed!");
+                        MaxTick: assert (counter.max_tick == 1'b1) else $error("Assertion MaxTick failed!");
                         // * Output decision.
                         lb_ctrl <= min_load_vfids[0];
-
+                        // ! Do NOT clear the results YET, 
+                        // ! since LB may need to hold on to that value until a valid handshake with the proxy.
+                        // load_comparison_results <= 'X;
+                        // min_load_vfids <= 'X;
                     end
                 end
 
                 default: begin
                     enable_counter <= 1'b0;
+                    meta_data_taken <= 'X;
                     lb_ctrl <= 'X;
                     layer <= '0;
+                    load_comparison_results <= 'X;
+                    min_load_vfids <= 'X;
                 end
             endcase
         end

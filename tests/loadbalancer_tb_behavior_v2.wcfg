@@ -12,14 +12,14 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0.000 ns"></ZoomStartTime>
-      <ZoomEndTime time="20.001 ns"></ZoomEndTime>
-      <Cursor1Time time="20.000 ns"></Cursor1Time>
+      <ZoomEndTime time="40.001 ns"></ZoomEndTime>
+      <Cursor1Time time="40.000 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="254"></NameColumnWidth>
       <ValueColumnWidth column_width="98"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="35" />
+   <WVObjectSize size="26" />
    <wvobject type="logic" fp_name="/loadbalancer_tb/clk">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -27,18 +27,6 @@
    <wvobject type="logic" fp_name="/loadbalancer_tb/resetn">
       <obj_property name="ElementShortName">resetn</obj_property>
       <obj_property name="ObjectShortName">resetn</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb_ctrl">
-      <obj_property name="ElementShortName">lb_ctrl[1:0]</obj_property>
-      <obj_property name="ObjectShortName">lb_ctrl[1:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/region_stats_src">
-      <obj_property name="ElementShortName">region_stats_src[31:0]</obj_property>
-      <obj_property name="ObjectShortName">region_stats_src[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/meta_q_data">
-      <obj_property name="ElementShortName">meta_q_data[15:0][7:0]</obj_property>
-      <obj_property name="ObjectShortName">meta_q_data[15:0][7:0]</obj_property>
    </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/meta_q_in">
       <obj_property name="ElementShortName">meta_q_in[7:0]</obj_property>
@@ -48,116 +36,128 @@
       <obj_property name="ElementShortName">meta_q_n_entries[3:0]</obj_property>
       <obj_property name="ObjectShortName">meta_q_n_entries[3:0]</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/meta_q_wr_pntr">
-      <obj_property name="ElementShortName">meta_q_wr_pntr[3:0]</obj_property>
-      <obj_property name="ObjectShortName">meta_q_wr_pntr[3:0]</obj_property>
+   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_snk/tready">
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="ElementShortName">tready</obj_property>
+      <obj_property name="ObjectShortName">tready</obj_property>
+      <obj_property name="label">meta_q_snk.tready</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/meta_q_rd_pntr">
-      <obj_property name="ElementShortName">meta_q_rd_pntr[3:0]</obj_property>
-      <obj_property name="ObjectShortName">meta_q_rd_pntr[3:0]</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_is_full">
-      <obj_property name="ElementShortName">meta_q_is_full</obj_property>
-      <obj_property name="ObjectShortName">meta_q_is_full</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_is_empty">
-      <obj_property name="ElementShortName">meta_q_is_empty</obj_property>
-      <obj_property name="ObjectShortName">meta_q_is_empty</obj_property>
+   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_val_src">
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="ElementShortName">meta_q_val_src</obj_property>
+      <obj_property name="ObjectShortName">meta_q_val_src</obj_property>
+      <obj_property name="label">meta_q_snk.valid</obj_property>
    </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/meta_data_taken">
       <obj_property name="ElementShortName">meta_data_taken[7:0]</obj_property>
       <obj_property name="ObjectShortName">meta_data_taken[7:0]</obj_property>
+      <obj_property name="CustomSignalColor">#E0FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_val_src">
-      <obj_property name="ElementShortName">meta_q_val_src</obj_property>
-      <obj_property name="ObjectShortName">meta_q_val_src</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/requested_oid">
+      <obj_property name="ElementShortName">requested_oid[3:0]</obj_property>
+      <obj_property name="ObjectShortName">requested_oid[3:0]</obj_property>
+      <obj_property name="CustomSignalColor">#E0FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_q_rdy_snk">
-      <obj_property name="ElementShortName">meta_q_rdy_snk</obj_property>
-      <obj_property name="ObjectShortName">meta_q_rdy_snk</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/next_state">
+      <obj_property name="ElementShortName">next_state[1:0]</obj_property>
+      <obj_property name="ObjectShortName">next_state[1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#FFFF00</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_src_val">
-      <obj_property name="ElementShortName">meta_src_val</obj_property>
-      <obj_property name="ObjectShortName">meta_src_val</obj_property>
+   <wvobject type="logic" fp_name="/loadbalancer_tb/lb/enable_counter">
+      <obj_property name="ElementShortName">enable_counter</obj_property>
+      <obj_property name="ObjectShortName">enable_counter</obj_property>
+      <obj_property name="CustomSignalColor">#00FF7F</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/meta_snk_rdy">
-      <obj_property name="ElementShortName">meta_snk_rdy</obj_property>
-      <obj_property name="ObjectShortName">meta_snk_rdy</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/count">
+      <obj_property name="ElementShortName">count[1:0]</obj_property>
+      <obj_property name="ObjectShortName">count[1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#00FF7F</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/OPERATOR_ID_WIDTH">
-      <obj_property name="ElementShortName">OPERATOR_ID_WIDTH[31:0]</obj_property>
-      <obj_property name="ObjectShortName">OPERATOR_ID_WIDTH[31:0]</obj_property>
+   <wvobject type="logic" fp_name="/loadbalancer_tb/lb/max_tick">
+      <obj_property name="ElementShortName">max_tick</obj_property>
+      <obj_property name="ObjectShortName">max_tick</obj_property>
+      <obj_property name="CustomSignalColor">#00FF7F</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/HTTP_META_WIDTH">
-      <obj_property name="ElementShortName">HTTP_META_WIDTH[31:0]</obj_property>
-      <obj_property name="ObjectShortName">HTTP_META_WIDTH[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/N_REGIONS">
-      <obj_property name="ElementShortName">N_REGIONS[31:0]</obj_property>
-      <obj_property name="ObjectShortName">N_REGIONS[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/QDEPTH">
-      <obj_property name="ElementShortName">QDEPTH[31:0]</obj_property>
-      <obj_property name="ObjectShortName">QDEPTH[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/PNTR_BITS">
-      <obj_property name="ElementShortName">PNTR_BITS[31:0]</obj_property>
-      <obj_property name="ObjectShortName">PNTR_BITS[31:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/region_stats_in">
-      <obj_property name="ElementShortName">region_stats_in[31:0]</obj_property>
-      <obj_property name="ObjectShortName">region_stats_in[31:0]</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/current_state">
+      <obj_property name="ElementShortName">current_state[1:0]</obj_property>
+      <obj_property name="ObjectShortName">current_state[1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#FFFF00</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/region_stats">
       <obj_property name="ElementShortName">region_stats[3:0][7:0]</obj_property>
       <obj_property name="ObjectShortName">region_stats[3:0][7:0]</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/lb/has_hdr">
-      <obj_property name="ElementShortName">has_hdr</obj_property>
-      <obj_property name="ObjectShortName">has_hdr</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/requested_oid">
-      <obj_property name="ElementShortName">requested_oid[3:0]</obj_property>
-      <obj_property name="ObjectShortName">requested_oid[3:0]</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/count">
-      <obj_property name="ElementShortName">count[1:0]</obj_property>
-      <obj_property name="ObjectShortName">count[1:0]</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/lb/max_tick">
-      <obj_property name="ElementShortName">max_tick</obj_property>
-      <obj_property name="ObjectShortName">max_tick</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/layer">
-      <obj_property name="ElementShortName">layer[1:0]</obj_property>
-      <obj_property name="ObjectShortName">layer[1:0]</obj_property>
-   </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/lb/load_comparison_results">
       <obj_property name="ElementShortName">load_comparison_results[1:0][3:0]</obj_property>
       <obj_property name="ObjectShortName">load_comparison_results[1:0][3:0]</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/lb/min_load_vfids">
       <obj_property name="ElementShortName">min_load_vfids[1:0][1:0]</obj_property>
       <obj_property name="ObjectShortName">min_load_vfids[1:0][1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/layer">
+      <obj_property name="ElementShortName">layer[1:0]</obj_property>
+      <obj_property name="ObjectShortName">layer[1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#00FFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
    <wvobject type="array" fp_name="/loadbalancer_tb/lb_ctrl">
       <obj_property name="ElementShortName">lb_ctrl[1:0]</obj_property>
       <obj_property name="ObjectShortName">lb_ctrl[1:0]</obj_property>
+      <obj_property name="CustomSignalColor">#FFFFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/current_state">
-      <obj_property name="ElementShortName">current_state[1:0]</obj_property>
-      <obj_property name="ObjectShortName">current_state[1:0]</obj_property>
+   <wvobject type="logic" fp_name="/loadbalancer_tb/proxy_meta_snk/tready">
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="ElementShortName">tready</obj_property>
+      <obj_property name="ObjectShortName">tready</obj_property>
+      <obj_property name="label">proxy.tready</obj_property>
+      <obj_property name="CustomSignalColor">#FFFFFF</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/next_state">
-      <obj_property name="ElementShortName">next_state[1:0]</obj_property>
-      <obj_property name="ObjectShortName">next_state[1:0]</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/counter/MAX">
+      <obj_property name="ElementShortName">MAX[31:0]</obj_property>
+      <obj_property name="ObjectShortName">MAX[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="/loadbalancer_tb/lb/meta_data_taken">
-      <obj_property name="ElementShortName">meta_data_taken[7:0]</obj_property>
-      <obj_property name="ObjectShortName">meta_data_taken[7:0]</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/OPERATOR_ID_WIDTH">
+      <obj_property name="ElementShortName">OPERATOR_ID_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">OPERATOR_ID_WIDTH[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="/loadbalancer_tb/lb/enable_counter">
-      <obj_property name="ElementShortName">enable_counter</obj_property>
-      <obj_property name="ObjectShortName">enable_counter</obj_property>
+   <wvobject type="array" fp_name="/loadbalancer_tb/HTTP_META_WIDTH">
+      <obj_property name="ElementShortName">HTTP_META_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">HTTP_META_WIDTH[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/loadbalancer_tb/N_REGIONS">
+      <obj_property name="ElementShortName">N_REGIONS[31:0]</obj_property>
+      <obj_property name="ObjectShortName">N_REGIONS[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/loadbalancer_tb/QDEPTH">
+      <obj_property name="ElementShortName">QDEPTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">QDEPTH[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/loadbalancer_tb/lb/counter/COUNT_BITS">
+      <obj_property name="ElementShortName">COUNT_BITS[31:0]</obj_property>
+      <obj_property name="ObjectShortName">COUNT_BITS[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/loadbalancer_tb/meta_q_data">
+      <obj_property name="ElementShortName">meta_q_data[15:0][7:0]</obj_property>
+      <obj_property name="ObjectShortName">meta_q_data[15:0][7:0]</obj_property>
    </wvobject>
 </wave_config>

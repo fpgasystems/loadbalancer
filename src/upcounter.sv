@@ -13,7 +13,7 @@ module upcounter #(
     logic [COUNT_BITS-1:0] next_count;
     // localparam int MAX = 2**COUNT_BITS - 1;
 
-    always_ff @( posedge clk ) begin : update_state
+    always_ff @( posedge clk ) begin : StateUpdate
         if (resetn == 1'b0 || enable == 1'b0) begin
             count <= '0;
         end else begin
@@ -21,7 +21,7 @@ module upcounter #(
         end
     end
 
-    always_comb begin : next_state
+    always_comb begin : NextState
         if (max_tick == 1'b0) begin
             next_count = count + 1'b1;            
         end else begin
@@ -29,7 +29,7 @@ module upcounter #(
         end
     end
 
-    always_comb begin : output_logic
+    always_comb begin : OutputLogic
         if (count == MAX) begin
             max_tick = 1'b1;
         end else begin
